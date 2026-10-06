@@ -1,9 +1,3 @@
-> **Merged build:** This repository now includes the original automatic RSS
-> publisher and a separate interactive AniWatch/Animetsu downloader service.
-> For the supported combined Docker Compose deployment, follow
-> [DEPLOYMENT.md](DEPLOYMENT.md). The two services require separate Telegram
-> bot tokens and isolated dependencies.
-
 [![Stars](https://img.shields.io/github/stars/kaif-00z/AutoAnimeBot?style=flat-square&color=yellow)](https://github.com/kaif-00z/AutoAnimeBot/stargazers)
 [![Forks](https://img.shields.io/github/forks/kaif-00z/AutoAnimeBot?style=flat-square&color=orange)](https://github.com/kaif-00z/AutoAnimeBotfork)
 [![Python](https://img.shields.io/badge/Python-v3.12.3-blue)](https://www.python.org/)
@@ -53,8 +47,10 @@
 - Try To Resove Any Task From ToDo List Or Raise A Issue!
 
 ## How to deploy?
-Use the combined Docker Compose setup in [DEPLOYMENT.md](DEPLOYMENT.md). The
-legacy one-service Heroku instructions are not supported for this merged build.
+<p><a href="https://www.youtube.com/live/hWf7DN3nN_c"> <img src="https://img.shields.io/badge/See%20Video-black?style=for-the-badge&logo=YouTube" width="160""/></a></p>
+
+### Fork Repo Then click on below button of ur fork repo.
+[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy)
 
 ## Developer Note
 
@@ -104,8 +100,13 @@ legacy one-service Heroku instructions are not supported for this merged build.
 
 ## Deployment In VPS
 
-Follow the environment and `docker compose up --build -d` steps in
-[DEPLOYMENT.md](DEPLOYMENT.md).
+- `git clone https://github.com/kaif-00z/AutoAnimeBot.git`
+
+- `nano .env` configure env as per [this](https://github.com/kaif-00z/AutoAnimeBot/blob/main/.sample.env) or  using [this](https://github.com/kaif-00z/AutoAnimeBot/blob/main/auto_env_gen.py).
+
+- `sudo docker build . -t ongoing` (make sure to install docker first using `sudo apt install docker.io`)
+
+- `sudo docker run ongoing`
 
 ## Commands
 

@@ -18,15 +18,6 @@
 
 from decouple import config
 
-if (
-    config("RSS_BOT_TOKEN", default="").strip()
-    and config("RSS_BOT_TOKEN", default="").strip()
-    == config("ANIME_BOT_TOKEN", default="").strip()
-):
-    raise ValueError(
-        "RSS_BOT_TOKEN and ANIME_BOT_TOKEN must be different Telegram bot tokens."
-    )
-
 
 class Var:
     # Version

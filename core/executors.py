@@ -97,10 +97,11 @@ class Executors:
             return False, str(format_exc())
 
     async def further_work(self):
-        try:
-            if not await self.db.is_ss_upload():
-                return await self.reporter.all_done()
 
+        if not await self.db.is_ss_upload():
+            return await self.reporter.all_done()
+
+        try:
             await self.reporter.started_gen_ss()
             msg = await self.bot.get_messages(
                 Var.BACKUP_CHANNEL if self.is_button else Var.MAIN_CHANNEL,

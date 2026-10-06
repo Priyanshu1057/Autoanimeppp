@@ -111,74 +111,42 @@ async def _(e):
     await admin._about(e)
 
 
-@bot.on(
-    events.callbackquery.CallbackQuery(
-        data="slog", func=lambda e: e.sender_id == Var.OWNER
-    )
-)
+@bot.on(events.callbackquery.CallbackQuery(data="slog"))
 async def _(e):
     await admin._logs(e)
 
 
-@bot.on(
-    events.callbackquery.CallbackQuery(
-        data="sret", func=lambda e: e.sender_id == Var.OWNER
-    )
-)
+@bot.on(events.callbackquery.CallbackQuery(data="sret"))
 async def _(e):
     await admin._restart(e, schedule)
 
 
-@bot.on(
-    events.callbackquery.CallbackQuery(
-        data="entg", func=lambda e: e.sender_id == Var.OWNER
-    )
-)
+@bot.on(events.callbackquery.CallbackQuery(data="entg"))
 async def _(e):
     await admin._encode_t(e)
 
 
-@bot.on(
-    events.callbackquery.CallbackQuery(
-        data="sstg", func=lambda e: e.sender_id == Var.OWNER
-    )
-)
+@bot.on(events.callbackquery.CallbackQuery(data="sstg"))
 async def _(e):
     await admin._ss_t(e)
 
 
-@bot.on(
-    events.callbackquery.CallbackQuery(
-        data="butg", func=lambda e: e.sender_id == Var.OWNER
-    )
-)
+@bot.on(events.callbackquery.CallbackQuery(data="butg"))
 async def _(e):
     await admin._btn_t(e)
 
 
-@bot.on(
-    events.callbackquery.CallbackQuery(
-        data="scul", func=lambda e: e.sender_id == Var.OWNER
-    )
-)
+@bot.on(events.callbackquery.CallbackQuery(data="scul"))
 async def _(e):
     await admin._sep_c_t(e)
 
 
-@bot.on(
-    events.callbackquery.CallbackQuery(
-        data="cast", func=lambda e: e.sender_id == Var.OWNER
-    )
-)
+@bot.on(events.callbackquery.CallbackQuery(data="cast"))
 async def _(e):
     await admin.broadcast_bt(e)
 
 
-@bot.on(
-    events.callbackquery.CallbackQuery(
-        data="bek", func=lambda e: e.sender_id == Var.OWNER
-    )
-)
+@bot.on(events.callbackquery.CallbackQuery(data="bek"))
 async def _(e):
     await e.edit(
         "** <                ADMIN PANEL                 > **",
@@ -187,7 +155,6 @@ async def _(e):
 
 
 async def anime(data):
-    uploaded_all = True
     try:
         torr = [data.get("480p"), data.get("720p"), data.get("1080p")]
         anime_info = AnimeInfo(torr[0].title)
@@ -236,18 +203,12 @@ async def anime(data):
                     asyncio.create_task(exe.further_work())
                     continue
                 await reporter.report_error(_btn, log=True)
-                uploaded_all = False
-                if reporter.msg:
-                    await reporter.msg.delete()
+                await reporter.msg.delete()
             except BaseException:
                 await reporter.report_error(str(format_exc()), log=True)
-                uploaded_all = False
-                if reporter.msg:
-                    await reporter.msg.delete()
-        return uploaded_all
+                await reporter.msg.delete()
     except BaseException:
         LOGS.error(str(format_exc()))
-        return False
 
 
 try:
