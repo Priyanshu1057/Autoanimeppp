@@ -241,7 +241,14 @@ async def handle_ping(client: Client, message):
     end_t = time.time()
 
     ping = (end_t - start_t) * 1000
-    await msg.edit_text(f"<b>ᴘᴏɴɢ!</b> <code>{ping:.3f} ᴍꜱ</code>", parse_mode=ParseMode.HTML)
+    owner_match = message.from_user.id == OWNER_ID
+    owner_status = "✅ ᴍᴀᴛᴄʜ" if owner_match else "❌ ɴᴏᴛ ᴛʜᴇ ᴄᴏɴғɪɢᴜʀᴇᴅ ᴏᴡɴᴇʀ"
+    await msg.edit_text(
+        f"<b>ᴘᴏɴɢ!</b> <code>{ping:.3f} ᴍꜱ</code>\n"
+        f"ʏᴏᴜʀ ᴜsᴇʀ ɪᴅ: <code>{message.from_user.id}</code>\n"
+        f"ᴏᴡɴᴇʀ ɪᴅ ᴄʜᴇᴄᴋ: {owner_status}",
+        parse_mode=ParseMode.HTML,
+    )
 
 
 @Client.on_message(filters.private & filters.command("restart"))
@@ -259,8 +266,16 @@ async def handle_restart(client: Client, message):
     # Restart the current process
     os.execl(sys.executable, sys.executable, "-m", "cantarella")
 
-@Client.on_message(filters.private & filters.command("broadcast") & admin & filters.reply)
+@Client.on_message(filters.private & filters.command("broadcast") & filters.reply)
 async def handle_broadcast(client: Client, message):
+    if not await check_admin(None, client, message):
+        return await message.reply(
+            "Owner/admin access required. Your Telegram ID is "
+            f"<code>{message.from_user.id}</code>. If you own this bot, check "
+            "<code>OWNER_ID</code>.",
+            parse_mode=ParseMode.HTML,
+        )
+
     broadcast_msg = message.reply_to_message
     sts = await message.reply("<blockquote>🚀 <b>ꜱᴛᴀʀᴛɪɴɢ ʙʀᴏᴀᴅᴄᴀꜱᴛ...</b></blockquote>", parse_mode=ParseMode.HTML)
 
@@ -288,6 +303,14 @@ async def handle_broadcast(client: Client, message):
 
     await sts.edit_text(f"<blockquote>✅ <b>ʙʀᴏᴀᴅᴄᴀꜱᴛ ᴄᴏᴍᴘʟᴇᴛᴇᴅ!</b>\n\n👥 ᴛᴏᴛᴀʟ ᴜꜱᴇʀꜱ: {success + failed}\n✨ ꜱᴜᴄᴄᴇꜱꜱ: {success}\n💀 ғᴀɪʟᴇᴅ: {failed}</blockquote>", parse_mode=ParseMode.HTML)
 
-@Client.on_message(filters.private & filters.command("broadcast") & admin & ~filters.reply)
+@Client.on_message(filters.private & filters.command("broadcast") & ~filters.reply)
 async def handle_broadcast_no_reply(client: Client, message):
+    if not await check_admin(None, client, message):
+        return await message.reply(
+            "Owner/admin access required. Your Telegram ID is "
+            f"<code>{message.from_user.id}</code>. If you own this bot, check "
+            "<code>OWNER_ID</code>.",
+            parse_mode=ParseMode.HTML,
+        )
+
     await message.reply("<blockquote>❌ ᴘʟᴇᴀꜱᴇ ʀᴇᴘʟʏ ᴛᴏ ᴀ ᴍᴇꜱꜱᴀɢᴇ ᴛᴏ ʙʀᴏᴀᴅᴄᴀꜱᴛ ɪᴛ.</blockquote>", parse_mode=ParseMode.HTML)

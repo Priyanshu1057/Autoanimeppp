@@ -76,6 +76,18 @@ binary bundled by its scraper; ARM deployment needs an ARM-compatible
   `ANIME_TARGET_CHAT_ID`, then enable it from `/manage` if you want it. The
   original RSS publisher remains a separate always-running service.
 
+If `/ping` and `/start` work but an admin command does not, `/ping` now reports
+your Telegram user ID and whether it matches `OWNER_ID`. Set `OWNER_ID` to your
+own numeric Telegram user ID in `.env`, then recreate the downloader service:
+
+```bash
+docker compose up -d --build --force-recreate interactive-downloader
+```
+
+The bot intentionally restricts management commands and search/download access
+to the configured owner and admins; the permission check is not a startup
+failure.
+
 The source scrapers depend on third-party sites and may stop working if those
 sites change. Only download or redistribute media where you have the necessary
 rights.

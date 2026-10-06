@@ -28,10 +28,27 @@ async def check_admin(filter, client, message):
 
 admin = filters.create(check_admin)
 
-@Client.on_message(filters.private & filters.command("manage") & admin)
+async def ensure_admin(message):
+    if await check_admin(None, None, message):
+        return True
+
+    user_id = message.from_user.id
+    await message.reply(
+        "<blockquote>🔒 <b>ᴏᴡɴᴇʀ/ᴀᴅᴍɪɴ ᴀᴄᴄᴇss ʀᴇǫᴜɪʀᴇᴅ.</b>\n"
+        f"ʏᴏᴜʀ ᴛᴇʟᴇɢʀᴀᴍ ɪᴅ: <code>{user_id}</code>\n"
+        "ɪғ ʏᴏᴜ ᴏᴡɴ ᴛʜɪs ʙᴏᴛ, sᴇᴛ <code>OWNER_ID</code> ᴛᴏ ᴛʜɪs ɪᴅ ᴀɴᴅ ʀᴇsᴛᴀʀᴛ.</blockquote>",
+        parse_mode=ParseMode.HTML,
+    )
+    return False
+
+
+@Client.on_message(filters.private & filters.command("manage"))
 @check_ban
 @check_fsub
 async def handle_settings(client: Client, message):
+    if not await ensure_admin(message):
+        return
+
     ongoing_enabled = await db.get_user_setting(0, "ongoing_enabled", False)
     status_icon = "✅ ON" if ongoing_enabled else "❌ OFF"
     toggle_label = "🔴 Turn OFF" if ongoing_enabled else "🟢 Turn ON"
@@ -73,10 +90,13 @@ async def handle_settings(client: Client, message):
         parse_mode=ParseMode.HTML
     )
 
-@Client.on_message(filters.private & filters.command("autodel") & admin)
+@Client.on_message(filters.private & filters.command("autodel"))
 @check_ban
 @check_fsub
 async def handle_autodel(client: Client, message):
+    if not await ensure_admin(message):
+        return
+
     args = message.command
     if len(args) < 2:
         current_val = await db.get_user_setting(0, "autodel_time", 0)
@@ -235,10 +255,13 @@ async def handle_start(client: Client, message):
         logger.error(f"Error in start_command: {e}")
         await message.reply_text("An error occurred while processing your request.")
 
-@Client.on_message(filters.private & filters.command("favorites") & admin)
+@Client.on_message(filters.private & filters.command("favorites"))
 @check_ban
 @check_fsub
 async def handle_favorites(client: Client, message):
+    if not await ensure_admin(message):
+        return
+
     user_id = message.from_user.id
     favorites = await db.get_favorites(user_id)
 
