@@ -4,6 +4,7 @@ dnspython
 lxml_html_clean
 aiohttp
 aiofiles
+requests
 apscheduler==3.10.1
 feedparser
 telethon

@@ -92,7 +92,7 @@ class DataBase:
 
     async def get_anime_channel_info(self, title):
         data = await self.channel_info_db.find_one({"_id": title})
-        if (data or {}).get(title):
+        if (data or {}).get("data"):
             return data["data"]
         return {}
 

@@ -92,8 +92,10 @@ class Tools:
 
     async def mediainfo(self, file, bot):
         try:
-            process = await asyncio.create_subprocess_shell(
-                f"mediainfo '''{file}''' --Output=HTML",
+            process = await asyncio.create_subprocess_exec(
+                "mediainfo",
+                file,
+                "--Output=HTML",
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
@@ -180,45 +182,44 @@ class Tools:
             return False, format_exc()
         return True, out
 
-    async def bash_(self, cmd, run_code=0):
-        process = await asyncio.create_subprocess_shell(
-            cmd,
+    async def bash_(self, *cmd):
+        process = await asyncio.create_subprocess_exec(
+            *cmd,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
         stdout, stderr = await process.communicate()
         err = stderr.decode().strip() or None
         out = stdout.decode().strip()
-        if not run_code and err:
-            if match := re.match("\\/bin\\/sh: (.*): ?(\\w+): not found", err):
-                return out, f"{match.group(2).upper()}_NOT_FOUND"
         return out, err
 
     async def frame_counts(self, dl):
         try:
-            _x, _y = await self.bash_(
-                f'mediainfo --fullscan """{dl}""" | grep "Frame count"'
-            )
-            if _y and _y.endswith("NOT_FOUND"):
-                LOGS.error(f"ERROR: `{_y}`")
-            elif _x and ":" in _x:
-                try:
-                    count_str = _x.split(":")[1].strip().split("\n")[0].strip()
-                    count_str = re.sub(r"\D", "", count_str)
-                    if count_str.isdigit():
-                        return int(count_str)
-                except Exception:
-                    pass
+            output, _ = await self.bash_("mediainfo", "--fullscan", dl)
+            if output:
+                match = re.search(r"Frame count\s*:\s*([\d,]+)", output)
+                if match:
+                    return int(match.group(1).replace(",", ""))
         except Exception as e:
             LOGS.error(f"mediainfo frame count failed: {e}")
 
         try:
-            _x, _ = await self.bash_(
-                f'ffprobe -v error -select_streams v:0 -count_packets -show_entries stream=nb_read_packets -of csv=p=0 """{dl}"""'
+            output, _ = await self.bash_(
+                "ffprobe",
+                "-v",
+                "error",
+                "-select_streams",
+                "v:0",
+                "-count_packets",
+                "-show_entries",
+                "stream=nb_read_packets",
+                "-of",
+                "csv=p=0",
+                dl,
             )
-            _x = _x.strip()
-            if _x.isdigit():
-                return int(_x)
+            output = output.strip()
+            if output.isdigit():
+                return int(output)
         except Exception:
             pass
 
@@ -235,72 +236,121 @@ class Tools:
         total_frames = await self.frame_counts(dl)
         if not total_frames:
             return False, "Unable to Count The Frames!"
-        _progress = f"progress-{time.time()}.txt"
-        cmd = f'''{
-            Var.FFMPEG} -hide_banner -loglevel quiet -progress """{_progress}""" -i """{dl}""" -metadata "Encoded By"="https://github.com/kaif-00z/AutoAnimeBot/" -preset ultrafast -c:v libx265 -crf {
-            Var.CRF} -vf "crop=trunc(iw/2)*2:trunc(ih/2)*2" -map 0:v -c:a aac -map 0:a -c:s copy -map 0:s? """{out}""" -y'''
-        process = await asyncio.create_subprocess_shell(
-            cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
-        )
-        d_time = time.time()
-        while process.returncode != 0:
-            await asyncio.sleep(5)
+        _progress = f"progress-{int(time.time() * 1000)}.txt"
+        cmd = [
+            Var.FFMPEG,
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-progress",
+            _progress,
+            "-i",
+            dl,
+            "-metadata",
+            "Encoded By=https://github.com/kaif-00z/AutoAnimeBot/",
+            "-preset",
+            "ultrafast",
+            "-c:v",
+            "libx265",
+            "-crf",
+            str(Var.CRF),
+            "-vf",
+            "crop=trunc(iw/2)*2:trunc(ih/2)*2",
+            "-map",
+            "0:v",
+            "-c:a",
+            "aac",
+            "-map",
+            "0:a",
+            "-c:s",
+            "copy",
+            "-map",
+            "0:s?",
+            out,
+            "-y",
+        ]
+        process = None
+        latest_log_msg = log_msg
+        start_time = time.time()
+        try:
+            process = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.DEVNULL,
+                stderr=asyncio.subprocess.DEVNULL,
+            )
+            elapsed_frames = 0
 
-            # ffmpeg init is slow in low end server so, hehe :)
-            if (time.time() - d_time) > 60:
-                if not os.path.exists(out) or os.path.getsize(out) == 0:
-                    try:
-                        process.kill()
-                    except Exception:
-                        pass
-                    return (
-                        False,
-                        "Unable To Encode This Video (Process timed out with 0-byte output file)!",
-                    )
+            # None means the process is still running. Any exit code, including a
+            # nonzero failure code, ends this loop and is checked below.
+            while process.returncode is None:
+                await asyncio.sleep(5)
+                if (
+                    time.time() - start_time > 60
+                    and (not os.path.exists(out) or os.path.getsize(out) == 0)
+                ):
+                    process.kill()
+                    await process.wait()
+                    return False, "FFmpeg timed out before producing output."
 
-            if not os.path.exists(_progress):
-                continue
-
-            try:
-                with open(_progress, "r") as fil:
-                    text = fil.read()
-            except Exception:
-                continue
-
-            frames = re.findall("frame=(\\d+)", text)
-            size = re.findall("total_size=(\\d+)", text)
-            speed = 0
-
-            if len(frames):
-                elapse = int(frames[-1])
-            if len(size):
-                size = int(size[-1])
-                per = elapse * 100 / int(total_frames)
-                time_diff = time.time() - int(d_time)
-                speed = round(elapse / time_diff, 2)
-            if int(speed) != 0:
-                some_eta = ((int(total_frames) - elapse) / speed) * 1000
-                text = f"**Successfully Downloaded The Anime**\n\n **File Name:** ```{
-                    dl.split('/')[
-                        -1]}```\n\n**STATUS:** \n"
-                progress_str = "`[{0}{1}] {2}%\n\n`".format(
-                    "".join("●" for _ in range(math.floor(per / 5))),
-                    "".join("" for _ in range(20 - math.floor(per / 5))),
-                    round(per, 2),
-                )
-                e_size = f"{self.hbs(size)} of ~{self.hbs((size / per) * 100)}"
-                eta = f"~{self.ts(some_eta)}"
+                if not os.path.exists(_progress):
+                    continue
                 try:
-                    _new_log_msg = await log_msg.edit(
-                        text + progress_str + "`" + e_size + "`" + "\n\n`" + eta + "`"
-                    )
+                    with open(_progress, "r", encoding="utf-8") as progress_file:
+                        progress_text = progress_file.read()
+                except OSError:
+                    continue
+
+                frames = re.findall(r"frame=(\d+)", progress_text)
+                sizes = re.findall(r"total_size=(\d+)", progress_text)
+                if frames:
+                    elapsed_frames = int(frames[-1])
+                if not frames or not sizes:
+                    continue
+
+                output_size = int(sizes[-1])
+                percent = min(100.0, elapsed_frames * 100 / total_frames)
+                elapsed_seconds = max(time.time() - start_time, 1)
+                frame_rate = elapsed_frames / elapsed_seconds
+                if frame_rate <= 0:
+                    continue
+
+                eta_ms = max(0, (total_frames - elapsed_frames) / frame_rate * 1000)
+                filled_blocks = min(20, max(0, math.floor(percent / 5)))
+                progress_bar = "`[{0}{1}] {2:.2f}%\n\n`".format(
+                    "●" * filled_blocks,
+                    " " * (20 - filled_blocks),
+                    percent,
+                )
+                estimated_size = output_size * 100 / max(percent, 0.01)
+                status = (
+                    f"**Successfully Downloaded The Anime**\n\n"
+                    f"**File Name:** ```{os.path.basename(dl)}```\n\n"
+                    f"**STATUS:** \n{progress_bar}"
+                    f"`{self.hbs(output_size)} of ~{self.hbs(estimated_size)}`"
+                    f"\n\n`~{self.ts(eta_ms)}`"
+                )
+                try:
+                    latest_log_msg = await log_msg.edit(status)
                 except MessageNotModifiedError:
                     pass
-        try:
-            os.remove(_progress)
-        except BaseException:
-            pass
-        return True, _new_log_msg
+
+            return_code = await process.wait()
+            if return_code != 0:
+                return False, f"FFmpeg exited with status {return_code}."
+            if not os.path.exists(out) or os.path.getsize(out) == 0:
+                return False, "FFmpeg completed without producing a non-empty output."
+            return True, latest_log_msg
+        except Exception as error:
+            if process and process.returncode is None:
+                process.kill()
+                await process.wait()
+            LOGS.error(f"FFmpeg execution failed: {error}")
+            return False, str(error)
+        finally:
+            try:
+                os.remove(_progress)
+            except OSError:
+                pass
 
     async def genss(self, file):
         try:
@@ -393,27 +443,55 @@ class Tools:
             os.mkdir(_hash)
             tsec = await self.genss(filename)
             fps = 10 / tsec
-            ncmd = f"ffmpeg -i '{filename}' -vf fps={fps} -vframes 10 '{_hash}/pic%01d.png'"
-            process = await asyncio.create_subprocess_shell(
-                ncmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+            process = await asyncio.create_subprocess_exec(
+                "ffmpeg",
+                "-i",
+                filename,
+                "-vf",
+                f"fps={fps}",
+                "-vframes",
+                "10",
+                f"{_hash}/pic%01d.png",
+                stdout=asyncio.subprocess.DEVNULL,
+                stderr=asyncio.subprocess.DEVNULL,
             )
-            await process.communicate()
+            await process.wait()
             ss, dd = await self.duration_s(filename)
-            __ = filename.split(".mkv")[-2]
-            out = __ + "_sample.mkv"
-            _ncmd = f'ffmpeg -i """{filename}""" -preset ultrafast -ss {ss} -to {dd} -c:v libx265 -crf 27 -map 0:v -c:a aac -map 0:a -c:s copy -map 0:s? """{out}""" -y'
-            process = await asyncio.create_subprocess_shell(
-                _ncmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+            out = f"{os.path.splitext(filename)[0]}_sample.mkv"
+            process = await asyncio.create_subprocess_exec(
+                "ffmpeg",
+                "-i",
+                filename,
+                "-preset",
+                "ultrafast",
+                "-ss",
+                ss,
+                "-to",
+                dd,
+                "-c:v",
+                "libx265",
+                "-crf",
+                "27",
+                "-map",
+                "0:v",
+                "-c:a",
+                "aac",
+                "-map",
+                "0:a",
+                "-c:s",
+                "copy",
+                "-map",
+                "0:s?",
+                out,
+                "-y",
+                stdout=asyncio.subprocess.DEVNULL,
+                stderr=asyncio.subprocess.PIPE,
             )
-            stdout, stderr = await process.communicate()
+            _, stderr = await process.communicate()
             er = stderr.decode().strip()
-            try:
-                if er:
-                    if not os.path.exists(out) or os.path.getsize(out) == 0:
-                        LOGS.error(str(er))
-                        return (ss_path, sp_path)
-            except BaseException:
-                pass
+            if process.returncode != 0 or not os.path.exists(out):
+                LOGS.error(er or "FFmpeg failed to create the sample video.")
+                return ss_path, sp_path
             return _hash, out
         except Exception as error:
             LOGS.error(str(error))

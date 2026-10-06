@@ -27,11 +27,11 @@ from libs.logger import LOGS
 
 class Torrent:
     def __init__(self) -> None:
-        self.cmd = """aria2c '''{link}''' -x 10 -j 10 --seed-time=0 --summary-interval=1 --show-console-readout=false -d '{path}'"""
+        self.downloader = "aria2c"
 
     async def bash(self, cmd, reporter=None):
-        process = await asyncio.create_subprocess_shell(
-            cmd,
+        process = await asyncio.create_subprocess_exec(
+            *cmd,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
         )
@@ -98,8 +98,23 @@ class Torrent:
 
                     last_update = now
 
-        await process.wait()
-        return "", None
+        return_code = await process.wait()
+        return return_code, None
 
     async def download_magnet(self, link: str, path: str, reporter=None):
-        await self.bash(self.cmd.format(link=link, path=path), reporter)
+        cmd = [
+            self.downloader,
+            link,
+            "-x",
+            "10",
+            "-j",
+            "10",
+            "--seed-time=0",
+            "--summary-interval=1",
+            "--show-console-readout=false",
+            "-d",
+            path,
+        ]
+        return_code, _ = await self.bash(cmd, reporter)
+        if return_code != 0:
+            raise RuntimeError(f"aria2c exited with status {return_code}")

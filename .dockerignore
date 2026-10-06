@@ -1,0 +1,16 @@
+.git
+.env
+.venv
+__pycache__
+**/__pycache__
+*.py[cod]
+*.session
+*.session-journal
+*.log
+attached_assets
+deliverables
+anime_downloads
+downloads
+encode
+thumbs
+binary/*.exe

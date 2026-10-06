@@ -1,0 +1,28 @@
+FROM python:3.11-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    ffmpeg \
+    libicu-dev \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
+
+# Pin the upstream N_m3u8DL-RE release expected by the scraper.
+RUN wget -qO /tmp/n_m3u8dl.tar.gz \
+      https://github.com/nilaoda/N_m3u8DL-RE/releases/download/v0.2.1-beta/N_m3u8DL-RE_Beta_linux-x64_20240828.tar.gz \
+    && tar -xzf /tmp/n_m3u8dl.tar.gz -C /tmp \
+    && install -m 0755 /tmp/N_m3u8DL-RE_Beta_linux-x64/N_m3u8DL-RE /usr/local/bin/N_m3u8DL-RE \
+    && rm -rf /tmp/n_m3u8dl.tar.gz /tmp/N_m3u8DL-RE_Beta_linux-x64
+
+WORKDIR /app
+
+COPY requirements-downloader.txt .
+RUN pip install --no-cache-dir -r requirements-downloader.txt
+
+COPY . .
+
+EXPOSE 8080
+CMD ["python", "-m", "cantarella"]

@@ -1,15 +1,22 @@
-FROM python:3.12.3-slim
+FROM python:3.12-slim
 
-WORKDIR /usr/src/app
-RUN chmod 777 /usr/src/app
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
 
-ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get -qq update && apt-get -qq install -y git wget pv jq python3-dev mediainfo gcc aria2 libsm6 libxext6 libfontconfig1 libxrender1 libgl1-mesa-glx
+WORKDIR /app
 
-COPY --from=mwader/static-ffmpeg:latest /ffmpeg /usr/local/bin/
-COPY --from=mwader/static-ffmpeg:latest /ffprobe /usr/local/bin/
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    aria2 \
+    ffmpeg \
+    gcc \
+    git \
+    mediainfo \
+    python3-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
-RUN pip3 install --no-cache-dir -r requirements.txt
 
-CMD ["bash","run.sh"]
+CMD ["python", "bot.py"]

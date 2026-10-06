@@ -90,8 +90,13 @@ class SubsPlease:
             try:
                 data = await self.feed_optimizer()
                 if data:
-                    await function(data)
-                    await self.db.add_anime(data.get("uid"))
+                    completed = await function(data)
+                    if completed:
+                        await self.db.add_anime(data.get("uid"))
+                    else:
+                        LOGS.warning(
+                            "Release processing did not complete; it will be retried."
+                        )
             except KeyboardInterrupt:
                 self._exit()
             except Exception:

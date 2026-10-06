@@ -1,0 +1,52 @@
+services:
+  rss-publisher:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file: .env
+    environment:
+      API_ID: ${API_ID:?Set API_ID in .env}
+      API_HASH: ${API_HASH:?Set API_HASH in .env}
+      BOT_TOKEN: ${RSS_BOT_TOKEN:?Set RSS_BOT_TOKEN in .env}
+      MONGO_SRV: ${MONGO_URL:?Set MONGO_URL in .env}
+      OWNER: ${OWNER_ID:?Set OWNER_ID in .env}
+      MAIN_CHANNEL: ${RSS_MAIN_CHANNEL:?Set RSS_MAIN_CHANNEL in .env}
+      LOG_CHANNEL: ${RSS_LOG_CHANNEL:?Set RSS_LOG_CHANNEL in .env}
+      CLOUD_CHANNEL: ${RSS_CLOUD_CHANNEL:?Set RSS_CLOUD_CHANNEL in .env}
+      BACKUP_CHANNEL: ${RSS_BACKUP_CHANNEL:-0}
+      FORCESUB_CHANNEL: ${RSS_FORCESUB_CHANNEL:-0}
+      FORCESUB_CHANNEL_LINK: ${RSS_FORCESUB_CHANNEL_LINK:-}
+      SESSION: ${RSS_SESSION:-}
+      THUMBNAIL: ${RSS_THUMBNAIL:-https://graph.org/file/ad1b25807b81cdf1dff65.jpg}
+      FFMPEG: ${RSS_FFMPEG:-ffmpeg}
+      CRF: ${RSS_CRF:-27}
+      LOG_ON_MAIN: ${RSS_LOG_ON_MAIN:-False}
+      SEND_SCHEDULE: ${RSS_SEND_SCHEDULE:-False}
+      RESTART_EVERDAY: ${RSS_RESTART_EVERDAY:-False}
+      DELETE_FILES_FROM_PMS: ${RSS_DELETE_FILES_FROM_PMS:-True}
+    restart: unless-stopped
+
+  interactive-downloader:
+    build:
+      context: .
+      dockerfile: Dockerfile.downloader
+    env_file: .env
+    environment:
+      API_ID: ${API_ID:?Set API_ID in .env}
+      API_HASH: ${API_HASH:?Set API_HASH in .env}
+      BOT_TOKEN: ${ANIME_BOT_TOKEN:?Set ANIME_BOT_TOKEN in .env}
+      OWNER_ID: ${OWNER_ID:?Set OWNER_ID in .env}
+      MONGO_URL: ${MONGO_URL:?Set MONGO_URL in .env}
+      MONGO_NAME: ${ANIME_MONGO_NAME:-cantarellabots}
+      MAIN_CHANNEL: ${ANIME_MAIN_CHANNEL:-}
+      LOG_CHANNEL: ${ANIME_LOG_CHANNEL:-}
+      TARGET_CHAT_ID: ${ANIME_TARGET_CHAT_ID:-}
+      SET_INTERVAL: ${ANIME_SET_INTERVAL:-3600}
+      BOT_USERNAME: ${ANIME_BOT_USERNAME:-}
+      FSUB_PIC: ${ANIME_FSUB_PIC:-https://files.catbox.moe/bli70r.jpg}
+      FSUB_LINK_EXPIRY: ${ANIME_FSUB_LINK_EXPIRY:-600}
+      START_PIC: ${ANIME_START_PIC:-https://files.catbox.moe/4b8jvw.jpg}
+      PORT: 8080
+    ports:
+      - "${ANIME_HEALTH_PORT:-8080}:8080"
+    restart: unless-stopped
